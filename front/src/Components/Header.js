@@ -24,10 +24,9 @@ class Header extends React.Component {
         const userId = localStorage.getItem('currentUserId');
         const { users } = this.props;
         const currentUser = users.find(user => user.id === parseInt(userId));
-        console.log(document.cookie)
 
         return (
-            <Navbar color="dark" light dark full expand="md" container="fluid">
+            <Navbar color="dark" light dark expand="md" container="fluid" className="mt-2 p-2 rounded-5">
                 <NavbarBrand>Welcome, {currentUser ? currentUser.username : "Guest"}</NavbarBrand>
                 <Nav className="ml-auto" navbar>
                     <NavItem>

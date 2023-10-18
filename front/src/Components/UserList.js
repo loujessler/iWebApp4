@@ -1,9 +1,10 @@
-import React, { Component } from 'react';
+import React, {Component} from 'react';
 import {Navigate} from "react-router-dom";
 import {Button, Table, Input, Container} from 'reactstrap';
 
-import {getCookie} from "../Utils/cookieUtils";
 import Header from './Header';
+import {getCookie} from "../Utils/cookieUtils";
+import {formatDate} from "../Utils/formatDate"
 
 
 class UserList extends Component {
@@ -14,20 +15,42 @@ class UserList extends Component {
     };
 
     handleSelectUser = (userId) => {
-        const { selectedUsers } = this.state;
-        if (selectedUsers.includes(userId)) {
-            this.setState({
-                selectedUsers: selectedUsers.filter(id => id !== userId),
-            });
-        } else {
-            this.setState({
-                selectedUsers: [...selectedUsers, userId],
-            });
-        }
+        this.setState(prevState => ({
+            selectedUsers: prevState.selectedUsers.includes(userId) ?
+                prevState.selectedUsers.filter(id => id !== userId) :
+                [...prevState.selectedUsers, userId]
+        }));
+    }
+
+    handleSelectAllUsers = () => {
+        this.setState(prevState => ({
+            selectedUsers: prevState.selectedUsers.length === prevState.users.length ?
+                [] :
+                prevState.users.map(user => user.id)
+        }));
+    }
+
+    fetchUsersList = () => {
+        fetch('/api/users')
+            .then(response => response.json())
+            .then(data => {
+                const updatedUsers = data.map(user => ({
+                    ...user,
+                    isBlocked: !user.is_active,
+                }));
+                this.setState({selectedUsers: [], users: updatedUsers});
+
+                const currentUserId = parseInt(localStorage.getItem('currentUserId'), 10);
+                const loggedInUser = updatedUsers.find(user => user.id === currentUserId);
+                if (loggedInUser && !loggedInUser.is_active) {
+                    this.setState({redirect: true});
+                }
+            })
+            .catch(error => console.error(error));
     }
 
     handleAction = (action) => {
-        const { selectedUsers } = this.state;
+        const {selectedUsers} = this.state;
         const csrfToken = getCookie('csrftoken');
         const requestOptions = {
             method: 'POST',
@@ -35,7 +58,7 @@ class UserList extends Component {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': csrfToken,
             },
-            body: JSON.stringify({ user_ids: selectedUsers, action: action }),
+            body: JSON.stringify({user_ids: selectedUsers, action: action}),
         };
 
         fetch(`/api/${action.toLowerCase()}/users/`, requestOptions)
@@ -49,8 +72,9 @@ class UserList extends Component {
             .then(() => {
                 const currentUserId = parseInt(localStorage.getItem('currentUserId'));
                 const loggedInUser = this.state.users.find(user => user.id === currentUserId);
-                if (loggedInUser && !loggedInUser.is_active) {
-                    this.setState({ redirect: true });
+                console.log('loggedInUser: ', loggedInUser)
+                if (selectedUsers.includes(currentUserId) || (loggedInUser && !loggedInUser.is_active)) {
+                    this.setState({redirect: true});
                 }
             })
             .catch((error) => {
@@ -58,73 +82,35 @@ class UserList extends Component {
             });
     }
 
-    fetchUsersList = () => {
-        fetch('/api/users')
-            .then(response => response.json())
-            .then(data => {
-                const updatedUsers = data.map(user => ({
-                    ...user,
-                    isBlocked: !user.is_active,
-                }));
-                this.setState({ selectedUsers: [], users: updatedUsers });
-
-                const currentUserId = parseInt(localStorage.getItem('currentUserId'), 10);
-                const loggedInUser = updatedUsers.find(user => user.id === currentUserId);
-                if (loggedInUser && !loggedInUser.is_active) {
-                    this.setState({ redirect: true });
-                }
-            })
-            .catch(error => console.error(error));
-    }
-
-
     componentDidMount() {
         this.fetchUsersList();
     }
 
-    formatDate(dateString) {
-        const date = new Date(dateString);
-
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0'); // Добавляем 1, так как месяцы в JS начинаются с 0
-        const day = String(date.getDate()).padStart(2, '0');
-
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-        const seconds = String(date.getSeconds()).padStart(2, '0');
-
-        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-    }
-
     render() {
-        if (this.state.redirect) {
-            return <Navigate to="/login" />;
+        const {redirect, selectedUsers, users} = this.state;
+
+        if (redirect) {
+            return <Navigate to="/login"/>;
         }
-        const { selectedUsers, users } = this.state;
 
         return (
             <div>
-                <Header users={this.state.users} />
-                <Container className="mt-4">
-                    <div className="d-flex justify-content-end mb-3">
-                        <Button color="primary" onClick={() => this.handleAction('Block')} style={{ marginRight: '10px' }}>Block</Button>
-                        <Button color="success" onClick={() => this.handleAction('Unblock')} style={{ marginRight: '10px' }}>Unblock</Button>
+                <Header users={users}/>
+                <Container className="mt-3">
+                    <div className="d-flex justify-content-end mb-3 pe-2">
+                        <Button color="primary" onClick={() => this.handleAction('Block')}
+                                style={{marginRight: '10px'}}>Block</Button>
+                        <Button color="success" onClick={() => this.handleAction('Unblock')}
+                                style={{marginRight: '10px'}}>Unblock</Button>
                         <Button color="danger" onClick={() => this.handleAction('Delete')}>Delete</Button>
                     </div>
-
                     <Table size="sm" bordered hover striped className="overflow-visible">
                         <thead>
                         <tr>
                             <th>
                                 <Input
                                     type="checkbox"
-                                    onChange={() => {
-                                        if (selectedUsers.length === users.length) {
-                                            this.setState({ selectedUsers: [] });
-                                        } else {
-                                            this.setState({ selectedUsers: users.map(user => user.id) });
-                                        }
-                                    }}
+                                    onChange={this.handleSelectAllUsers}
                                     checked={selectedUsers.length === users.length}
                                 />
                             </th>
@@ -149,9 +135,10 @@ class UserList extends Component {
                                 <td>{user.id}</td>
                                 <td>{user.username}</td>
                                 <td>{user.email}</td>
-                                <td>{this.formatDate(user.date_joined)}</td>
-                                <td>{this.formatDate(user.last_login)}</td>
-                                <td>{user.is_active ? <span className="text-success">Active</span> : <span className="text-danger">Blocked</span>}</td>
+                                <td>{formatDate(user.date_joined)}</td>
+                                <td>{formatDate(user.last_login)}</td>
+                                <td>{user.is_active ? <span className="text-success">Active</span> :
+                                    <span className="text-danger">Blocked</span>}</td>
                             </tr>
                         ))}
                         </tbody>
