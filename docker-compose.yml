@@ -1,0 +1,45 @@
+version: '3'
+
+services:
+  sqldb:
+    image: mysql:8
+    env_file: .env
+    environment:
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - sqldb-data:/var/lib/mysql
+
+  backend:
+    build: ./back
+    env_file: .env
+    restart: always
+    environment:
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_HOST: sqldb
+    volumes:
+      - ./back:/app
+    expose:
+      - 8000
+    ports:
+      - "8000:8000"
+    depends_on:
+      - sqldb
+    command: ["sh", "-c", "python run.py"]
+
+  frontend:
+    build: ./front
+    volumes:
+      - ./front:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    stdin_open: true
+    tty: true
+
+volumes:
+  sqldb-data:

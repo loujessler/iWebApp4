@@ -64,7 +64,7 @@ class UserList extends Component {
         fetch(`/api/${action.toLowerCase()}/users/`, requestOptions)
             .then((response) => {
                 if (response.ok) {
-                    return this.fetchUsersList(); // Update the user list after the action
+                    return this.fetchUsersList();
                 } else {
                     throw new Error(`${action} action failed`);
                 }

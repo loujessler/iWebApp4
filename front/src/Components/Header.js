@@ -9,10 +9,7 @@ class Header extends React.Component {
     };
 
     handleLogout = () => {
-        // Удаляем данные текущего пользователя из localStorage.
         localStorage.removeItem('currentUserId');
-
-        // Переводим состояние так, чтобы сработало перенаправление.
         this.setState({ redirectToLogin: true });
     };
 
