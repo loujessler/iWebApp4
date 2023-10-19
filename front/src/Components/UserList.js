@@ -73,7 +73,7 @@ class UserList extends Component {
                 const currentUserId = parseInt(localStorage.getItem('currentUserId'));
                 const loggedInUser = this.state.users.find(user => user.id === currentUserId);
                 console.log('loggedInUser: ', loggedInUser)
-                if (selectedUsers.includes(currentUserId) || (loggedInUser && !loggedInUser.is_active)) {
+                if ((selectedUsers.includes(currentUserId) && !loggedInUser.is_active) || (loggedInUser && !loggedInUser.is_active)) {
                     this.setState({redirect: true});
                 }
             })
